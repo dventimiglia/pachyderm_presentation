@@ -415,3 +415,72 @@ in the modern data warehouse space.
 #  LocalWords:  sklearn svm bayes GaussianNB clf cls OpenCV sys argv
 #  LocalWords:  jpg makefile patsubst py filesystem pachctl MinIO pfs
 #  LocalWords:  repo Minio ubuntu cmd autoscaling joinOn dbt ELT
+
+* Bonus Content
+
+** Pachyderm Beginner Tutorial
+
+Copied from [[https://docs.pachyderm.com/products/mldm/latest/get-started/beginner-tutorial/0/][Beginner Tutorial]]
+
+1. Convert .MOV files to .mp4 files
+2. Extract images from frames of .mp4 files
+3. Do Canny edge detection on images.
+4. Shuffle and organize the images.
+5. Create an HTML collage page.
+
+** Part 2:  Create a Project
+
+#+begin_src bash :results output :exports both
+pachctl create project video-to-frame-traces
+pachctl config update context --project video-to-frame-traces
+pachctl list projects  
+#+end_src
+
+** Part 3:  Create an input Repo and Upload Content
+
+#+begin_src bash :results output :exports both
+pachctl create repo raw_videos_and_images
+pachctl list repos
+#+end_src
+
+#+begin_src bash :results output :exports both
+pachctl put file raw_videos_and_images@master:liberty.png -f https://raw.githubusercontent.com/pachyderm/docs-content/main/images/opencv/liberty.jpg
+pachctl put file raw_videos_and_images@master:cat-sleeping.MOV -f https://storage.googleapis.com/docs-tutorial-resoruces/cat-sleeping.MOV
+pachctl put file raw_videos_and_images@master:robot.png -f https://raw.githubusercontent.com/pachyderm/docs-content/main/images/opencv/robot.jpg
+pachctl put file raw_videos_and_images@master:highway.MOV -f https://storage.googleapis.com/docs-tutorial-resoruces/highway.MOV
+#+end_src
+
+** Part 4:  Create the pipelines
+
+#+begin_src bash :results output :exports both
+pachctl create pipeline -f video_mp4_converter.yaml
+pachctl create pipeline -f image_flattener.yaml
+pachctl create pipeline -f image_tracer.yaml
+pachctl create pipeline -f movie_gifer.yaml
+pachctl create pipeline -f content_shuffler.yaml
+pachctl create pipeline -f content_collager.yaml
+#+end_src
+
+** Part 5:  List, Inspect, & Troubleshoot
+
+#+begin_src bash :results output :exports both
+pachctl list projects
+pachctl list repos
+pachctl list pipelines
+pachctl list commits
+pachctl list jobs --pipeline content_collager
+pachctl list files content_collager@master
+#+end_src
+
+#+begin_src bash :results output :exports both
+pachctl list projects
+pachctl list repos
+pachctl list pipelines
+pachctl list commits
+pachctl list jobs --pipeline content_collager
+pachctl list files content_collager@master
+#+end_src
+
+#+begin_src bash :results output :exports both
+pachctl mount images --repos images@staging  
+#+end_src
