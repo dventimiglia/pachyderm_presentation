@@ -1,0 +1,413 @@
+# -*- mode: org; -*-
+
+#+STARTUP: indent
+#+REVEAL_ROOT: https://cdn.jsdelivr.net/npm/reveal.js
+
+
+#+options: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline
+#+options: author:t broken-links:nil c:nil creator:nil
+#+options: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:nil
+#+options: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+options: timestamp:nil title:t toc:nil todo:t |:t
+#+title: Data Pipelines with Pachyderm
+#+date: <2024-07-16 Tue>
+#+author: David A. Ventimiglia
+#+email: davidaventimiglia@gmail.com
+#+language: en
+#+select_tags: export
+#+exclude_tags: noexport
+#+creator: Emacs 29.4 (Org mode 9.6.15)
+#+cite_export:
+
+* Data pipelines are hard.
+
+We keep attempting to solve this problem.
+
+- [[https://aws.amazon.com/what-is/data-pipeline/][AWS Data Pipeline]] :: S3, EC2, EMR, ...
+- [[https://airflow.apache.org/][Apache Airflow]] :: DAGS, Tasks, Schedulers, ...
+- [[https://pachyderm.io/][Pachyderm]] :: Pipelines, Repositories, Jobs, ...
+
+* Data pipelines are necessary.
+
+[[https://www.chegg.com/][Chegg]] has loads of them, mostly using [[https://spark.apache.org/][Apache Spark]] and [[https://www.databricks.com/][databricks]].
+
+- Qualify UGC flash-card decks for SEO.
+- Generate embeddings for similarity search.
+- Classify UGC images for quality, up-scaling, and segmentation.
+
+* Distributed systems are hard.
+
+- [[https://www.gnu.org/software/make/manual/html_node/Parallel.html][GNU Make]] :: Distribute recipes across cores.
+- [[https://www.gnu.org/software/parallel/][GNU Parallel]] :: Distribute Bash pipelines across cores.
+- [[https://www.dask.org/][dask]] :: Distribute data structures across threads, cores, machines.
+- [[https://pachyderm.io/][Pachyderm]] :: distribute /"datum" transformations/ across pods.
+
+* Pachyderm distributes "datum" transformations across pods.
+
+- Features :: Data-driven pipelines, Version Control, Auto-scaling & Deduplication
+- Concepts :: PFS, Repos, Branches, Commits, Pipelines, Jobs, Datums,
+  Projects
+
+** Data-driven pipelines
+
+Automatically trigger pipelines based on changes in the data and only
+process dependent changes.
+
+** Version Control
+
+Automatically track changes to any file with Git semantics.
+
+** Auto-scaling & Deduplication
+
+Automatically scale jobs, parallelize data sets, and deduplicate
+across repositories.
+
+* UGC image quality is important.
+
+- [[https://pyimagesearch.com/2015/09/07/blur-detection-with-opencv/][blur]] :: [[https://docs.opencv.org/4.x/d5/db5/tutorial_laplace_operator.html][variance-of-Laplacian]] and [[https://docs.opencv.org/4.x/d2/d2c/tutorial_sobel_derivatives.html][Sobel]] filters
+- [[https://en.wikipedia.org/wiki/Moir%C3%A9_pattern][Moiré]] :: [[https://arxiv.org/ftp/arxiv/papers/1701/1701.09037.pdf][Fourier]] [[https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_transforms/py_fourier_transform/py_fourier_transform.html][transform]]
+
+** Blur
+
+[[https://pyimagesearch.com/wp-content/uploads/2015/09/detecting_blur_header.jpg]]
+
+** Moiré
+
+[[https://resources.wavelength.focuscamera.com/wp-content/uploads/2021/12/15123912/moire-computer-screen-600x400-1.png]]
+
+** Variance-Of-Laplacian
+
+Convolve greyscale image with Laplacian 3x3 kernel and take the
+variance.
+
+#+begin_src python
+  import cv2
+  def vol(f):
+      img = cv2.imread(f)
+      grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+      return cv2.Laplacian(grey, cv2.CV_64F).var()
+#+end_src
+
+** Sobel Filters
+
+Compute approximate gradient of a greyscale image in the X and Y
+coordinates and take the variance.
+
+#+begin_src python
+  import cv2
+  def sob(f):
+      img = cv2.imread('/tmp/ugc.jpg')
+      grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+      return cv2.Sobel(grey, cv2.CV_64F, 0, 1).var()
+#+end_src
+
+** Fourier Transform
+
+Convert image to frequency-domain, remove low-frequencies, apply
+inverse transform, return the mean of the magnitude.
+
+#+begin_src python
+  import cv2
+  import numpy as np
+  def fft(f):
+      img = cv2.imread('/tmp/ugc.jpg')
+      grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+      img_fft = np.fft.fft2(grey)
+      ...
+      recon = np.fft.ifft2(fftShift)
+      magnitude = 20 * np.log(np.abs(recon))
+      mean = np.mean(magnitude)
+      return mean
+#+end_src
+
+** Naive Bayes Classifier
+
+Simple linear classifier based on the likelihood of events /assumed/
+to be independent.
+
+#+begin_src python
+  from sklearn import svm
+  from sklearn.naive_bayes import GaussianNB
+  clf = GaussianNB()
+  def cls(x):
+      y = clf.predict(x)
+      return clf.predict(x)
+#+end_src
+
+* Chegg Image Quality & Pachyderm.
+
+- prototyped a series of Python OpenCV scripts
+- orchestrated on a single workstation with GNU Make
+- deploy it at scale and with k8s expertise
+- deploy it in an online setting (SPOILER ALERT!  That
+  didn't happen!)
+- try something different
+
+* Prototyping locally with Python and Make
+
+** Scripting
+
+Python script to read a filename from the command line args, load the
+image, compute metrics, and write it to a file with another
+name from the args.
+
+#+begin_src python
+  import sys
+  with open(sys.argv[2], 'w') as f:
+      f.write(vol(sys.argv[3]))
+#+end_src
+
+** Scripting
+
+Python script to read multiple filenames from command line args,
+compute the classification, and write it out to a file with another
+name from the args.
+
+#+begin_src python
+import sys
+with open(sys.argv[3], 'w') as vol, open(sys.argv[4], 'w') as sob, open(sys.argv[5], 'w') as fft, open(sys.argv[6], 'w') as cls:
+      cls.write(cls.predict([
+                float(vol.read()),
+                float(sob.read()),
+                float(fft.read())]))
+#+end_src
+
+** Orchestrating
+
+GNU Make script using pattern matching and [[https://www.gnu.org/software/make/manual/html_node/Parallel.html][parallel]] execution with
+~.jpg~ prerequisites, OpenCV outputs as targets, and Python scripts as
+recipes
+
+#+begin_src makefile
+TARGETS := $(patsubst %.jpg,%.cls,$(wildcard *.jpg))
+all: $(TARGETS)
+$(TARGETS): %.cls:%.vol %.cls:%.sob %.cls:%.fft
+	python cls.py $< $@
+%.vol: %.jpg
+	python vol.py $< $@
+%.sob: %.jpg
+	python sob.py $< $@
+%.fft: %.jpg
+	python fft.py $< $@
+#+end_src
+
+#+begin_src bash
+  make -j
+#+end_src
+
+* Deploying at scale using Pachyderm
+
+** Scripting
+
+Use the exact same Python scripts since the Pachyderm execution model
+reads files from the the PFS and write files to the PFS filesystem.
+
+#+ATTR_HTML: :height 400
+[[https://m.media-amazon.com/images/I/91b3hzRGL9L._SL1500_.jpg]]
+
+** Orchestrating
+
+Pachyderm has "pipelines" defined in YAML files, describing inputs,
+outputs, and tasks.
+
+** Create a project
+
+- project :: top-level organizational unit to group repositories and
+  pipelines
+
+#+begin_src bash
+  pachctl create project image-quality
+#+end_src
+
+** Create repositories
+
+- repository :: locates data within the Pachyderm File System (PFS)
+- PFS :: version-controlled data management system backed by [[https://min.io/][MinIO]]
+
+#+begin_src bash
+  pachctl create repo images # input data
+  pachctl create repo scripts # input code
+  # output repository created automatically
+#+end_src
+
+** Add data to the repositories
+
+Data are in backing object store (S3 or Minio), with version control
+and lineage tracking.
+
+#+begin_src bash
+  pachctl put file -r images@branch:/images -f /images
+  pachctl put file -r scripts@branch:/scripts -f /scripts
+#+end_src
+
+** Create pipelines
+
+Pipelines are a set of transformations and actions.  They operate on
+input repositories, but also automatically create output repositories
+of the same name.
+
+#+begin_src yaml
+pipeline:
+  name: vol
+input:
+  union:
+    - pfs:
+        repo: images
+    - pfs:
+        repo: scripts
+  pfs:
+    repo: raw_videos_and_images
+    glob: "/*"
+transform:
+  image: ubuntu
+  cmd: ["python", "/pfs/scripts/vol.py", "/pfs/images/*", "/pfs/out/"]
+autoscaling: true
+#+end_src
+
+** Create pipelines
+
+Pipelines can be coarse-grained or fine-grained.  In this example,
+they're rather fine-grained.
+
+#+begin_src bash
+  pachctl create pipeline -f vol.yaml
+  pachctl create pipeline -f sob.yaml
+  pachctl create pipeline -f fft.yaml
+#+end_src
+
+** Create pipelines
+
+There's an extra pipeline that's needed, using Pachyderm's [[https://docs.pachyderm.com/products/mldm/latest/build-dags/pipeline-spec/input-join/][join]]
+operator, to match filenames for vol, sob, and fft using glob
+patterns.
+
+#+begin_src yaml
+pipeline:
+  name: vol
+input:
+  join:
+    - pfs:
+        repo: vol
+        glob: "/*/*.vol"
+        joinOn: "$1"
+    - pfs:
+        repo: sob
+        glob: "/*/*.sob"
+        joinOn: "$1"
+    - pfs:
+        repo: fft
+        glob: "/*/*.fft"
+        joinOn: "$1"
+transform:
+  image: ubuntu
+  cmd: ["python", "/pfs/scripts/join.py", "/pfs/images/*"]
+autoscaling: true
+#+end_src
+
+** Create pipelines
+
+It's in this joined pipeline that the ~join.py~ Python script (elided)
+calls the ~cls.py~ script to do the actual Naive Bayes classification
+of image quality.
+
+#+begin_src bash
+  pachctl create pipeline -f cls.yaml
+#+end_src
+
+* What is the point of all this?
+
+As images and scripts change in the ~images~ and ~scripts~
+repositories, Pachyderm automatically versions those repositories,
+automatically and incrementally creates tasks to process those
+changes, schedules those tasks across worker pods, and versions the
+output, with full lineage tracking.
+
+* A picture is worth a thousand words.
+
+*NOTE*:  this is not my pipeline!
+
+[[https://docs.pachyderm.com/images/mldm/beginner-tutorial/dag-sixth-pipeline.webp]]
+
+* Key Concepts
+
+- repositories :: store data (pros / cons)
+- pipelines :: process data & create more repositories
+- execution model :: you write code to read from and write to special
+  ~/pfs~ filesystems
+
+* Key Concepts
+
+- scripts :: Bash, Python, R, Java, whatever, these typically are
+  versioned in their own repository
+- images :: scripts run in containers which aren't exactly versioned
+
+* Pros of Pachyderm
+
+- The Pachyderm model maps well from data pipelines built locally with
+  scripts.
+- Versioning, automatic and incremental processing, and data and code
+  lineage are powerful.
+- The execution model is also highly flexible, supporting
+  heterogeneous pipelines.
+- Model serving looks interesting, but we did not pursue this.
+
+* Cons of Pachyderm
+
+- k8s dependency creates operational burden and a heavy lift to get
+  started.
+- The Pachyderm model is complex, with many moving parts.
+- Pachyderm versioning, while adopting Git semantics, is not Git.
+
+* Alternatives to Pachyderm
+
+** dask
+
+[[https://www.dask.org/][dask]] might be simpler than Pachyderm, but its execution model is different,
+parallelizing data structures in Python, and may be more limited.
+Also, it lacks versioning and automatic incremental computation.
+
+** ray
+
+[[https://www.ray.io/][ray]] is also simpler than Pachyderm, and its execution model is also
+different.  Like Pachyderm, its unit of computation is a task, but it
+builds on that with actors, jobs, a distributed object store, and then
+higher-level recipes for training, tuning, serving, etc...but it's all
+in Python.
+
+** Airflow
+
+[[https://airflow.apache.org/][Airflow]] is well-established but is showing its age.  Probably more
+rigid than some of the newer workflow / data processing systems.  
+
+** DVC
+
+[[https://dvc.org/][DVC]] is another popular tool for DS and ML workloads, with concepts
+(e.g. experiments) tailored for those users.  A bit like a fragmented
+~make~ for data, it organizes dependencies among data, but leaves
+storage (e.g. S3) and processing (e.g. Databricks) up to you.
+
+** dbt
+
+[[https://www.getdbt.com/][dbt]] transposes the T and the L, from ETL ➔ ELT and seems to be winning
+in the modern data warehouse space.
+
+* Recommendations
+
+[[https://www.thoughtworks.com/en-us/radar][Assess]] Pachyderm /if/ you have:
+
+- k8s expertise
+- complex transformation needs
+- heterogeneous tooling
+- more ETL than ELT
+- an appetite for complexity
+
+* Resources
+
+- [[https://szeitlin.github.io/posts/engineering/pachyderm-vs-airflow/][Pachyderm vs Airflow]] (2018)
+- [[https://szeitlin.github.io/posts/engineering/dvc_vs_pachyderm/][DVC vs Airflow]] (2021)
+- 
+
+#  LocalWords:  cv img imread grey cvtColor BGR numpy np fft fftShift
+#  LocalWords:  sklearn svm bayes GaussianNB clf cls OpenCV sys argv
+#  LocalWords:  jpg makefile patsubst py filesystem pachctl MinIO pfs
+#  LocalWords:  repo Minio ubuntu cmd autoscaling joinOn dbt ELT

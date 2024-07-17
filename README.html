@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Data Pipelines with Pachyderm</title>
+<meta name="author" content="David A. Ventimiglia"/>
+<meta name="description" content=""/>
+<meta name="keywords" content=""/>
+<style type="text/css">
+.underline { text-decoration: underline; }
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js/dist/reveal.css"/>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js/dist/theme/moon.css" id="theme"/>
+
+
+<!-- If the query includes 'print-pdf', include the PDF print sheet -->
+<script>
+    if( window.location.search.match( /print-pdf/gi ) ) {
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'https://cdn.jsdelivr.net/npm/reveal.js/css/print/pdf.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    }
+</script>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+<section id="sec-title-slide"><h1 class="title">Data Pipelines with Pachyderm</h1><p class="subtitle"></p>
+<h2 class="author">David A. Ventimiglia</h2><h2 class="date">2024-07-16 Tue 00:00</h2>
+</section>
+
+<section>
+<section id="slide-orga282063">
+<h2 id="orga282063">Data pipelines are hard.</h2>
+<p>
+We keep attempting to solve this problem.
+</p>
+
+<dl>
+<dt><a href="https://aws.amazon.com/what-is/data-pipeline/">AWS Data Pipeline</a></dt><dd>S3, EC2, EMR, &#x2026;</dd>
+<dt><a href="https://airflow.apache.org/">Apache Airflow</a></dt><dd>DAGS, Tasks, Schedulers, &#x2026;</dd>
+<dt><a href="https://pachyderm.io/">Pachyderm</a></dt><dd>Pipelines, Repositories, Jobs, &#x2026;</dd>
+
+</dl>
+
+</section>
+</section>
+<section>
+<section id="slide-orga7df679">
+<h2 id="orga7df679">Data pipelines are necessary.</h2>
+<p>
+<a href="https://www.chegg.com/">Chegg</a> has loads of them, mostly using <a href="https://spark.apache.org/">Apache Spark</a> and <a href="https://www.databricks.com/">databricks</a>.
+</p>
+
+<ul>
+<li>Qualify UGC flash-card decks for SEO.</li>
+<li>Generate embeddings for similarity search.</li>
+<li>Classify UGC images for quality, up-scaling, and segmentation.</li>
+
+</ul>
+
+</section>
+</section>
+<section>
+<section id="slide-org713fee2">
+<h2 id="org713fee2">Distributed systems are hard.</h2>
+<dl>
+<dt><a href="https://www.gnu.org/software/make/manual/html_node/Parallel.html">GNU Make</a></dt><dd>Distribute recipes across cores.</dd>
+<dt><a href="https://www.gnu.org/software/parallel/">GNU Parallel</a></dt><dd>Distribute Bash pipelines across cores.</dd>
+<dt><a href="https://www.dask.org/">dask</a></dt><dd>Distribute data structures across threads, cores, machines.</dd>
+<dt><a href="https://pachyderm.io/">Pachyderm</a></dt><dd>distribute <i>"datum" transformations</i> across pods.</dd>
+
+</dl>
+
+</section>
+</section>
+<section>
+<section id="slide-org6c89a33">
+<h2 id="org6c89a33">Pachyderm distributes "datum" transformations across pods.</h2>
+<dl>
+<dt>Features</dt><dd>Data-driven pipelines, Version Control, Auto-scaling &amp; Deduplication</dd>
+<dt>Concepts</dt><dd>PFS, Repos, Branches, Commits, Pipelines, Jobs, Datums,
+Projects</dd>
+
+</dl>
+
+</section>
+<section id="slide-orgb0950ca">
+<h3 id="orgb0950ca">Data-driven pipelines</h3>
+<p>
+Automatically trigger pipelines based on changes in the data and only
+process dependent changes.
+</p>
+
+</section>
+<section id="slide-orgeab9182">
+<h3 id="orgeab9182">Version Control</h3>
+<p>
+Automatically track changes to any file with Git semantics.
+</p>
+
+</section>
+<section id="slide-org0d5d519">
+<h3 id="org0d5d519">Auto-scaling &amp; Deduplication</h3>
+<p>
+Automatically scale jobs, parallelize data sets, and deduplicate
+across repositories.
+</p>
+
+</section>
+</section>
+<section>
+<section id="slide-org6d9ae1a">
+<h2 id="org6d9ae1a">UGC image quality is important.</h2>
+<dl>
+<dt><a href="https://pyimagesearch.com/2015/09/07/blur-detection-with-opencv/">blur</a></dt><dd><a href="https://docs.opencv.org/4.x/d5/db5/tutorial_laplace_operator.html">variance-of-Laplacian</a> and <a href="https://docs.opencv.org/4.x/d2/d2c/tutorial_sobel_derivatives.html">Sobel</a> filters</dd>
+<dt><a href="https://en.wikipedia.org/wiki/Moir%C3%A9_pattern">Moiré</a></dt><dd><a href="https://arxiv.org/ftp/arxiv/papers/1701/1701.09037.pdf">Fourier</a> <a href="https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_transforms/py_fourier_transform/py_fourier_transform.html">transform</a></dd>
+
+</dl>
+
+</section>
+<section id="slide-org7a15f40">
+<h3 id="org7a15f40">Blur</h3>
+
+<div id="orge1e79ea" class="figure">
+<p><img src="https://pyimagesearch.com/wp-content/uploads/2015/09/detecting_blur_header.jpg" alt="detecting_blur_header.jpg" />
+</p>
+</div>
+
+</section>
+<section id="slide-orge308c1d">
+<h3 id="orge308c1d">Moiré</h3>
+
+<div id="org7d387b0" class="figure">
+<p><img src="https://resources.wavelength.focuscamera.com/wp-content/uploads/2021/12/15123912/moire-computer-screen-600x400-1.png" alt="moire-computer-screen-600x400-1.png" />
+</p>
+</div>
+
+</section>
+<section id="slide-org2f9f886">
+<h3 id="org2f9f886">Variance-Of-Laplacian</h3>
+<p>
+Convolve greyscale image with Laplacian 3x3 kernel and take the
+variance.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-python"   ><code trim><span style="color: #00ffff;">import</span> cv2
+<span style="color: #00ffff;">def</span> <span style="color: #00fa9a; font-weight: bold;">vol</span>(f):
+    <span style="color: #7fffd4;">img</span> = cv2.imread(f)
+    <span style="color: #7fffd4;">grey</span> = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    <span style="color: #00ffff;">return</span> cv2.Laplacian(grey, cv2.CV_64F).var()
+</code></pre>
+</div>
+
+</section>
+<section id="slide-org493deef">
+<h3 id="org493deef">Sobel Filters</h3>
+<p>
+Compute approximate gradient of a greyscale image in the X and Y
+coordinates and take the variance.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-python"   ><code trim><span style="color: #00ffff;">import</span> cv2
+<span style="color: #00ffff;">def</span> <span style="color: #00fa9a; font-weight: bold;">sob</span>(f):
+    <span style="color: #7fffd4;">img</span> = cv2.imread(<span style="color: #ffc1c1;">'/tmp/ugc.jpg'</span>)
+    <span style="color: #7fffd4;">grey</span> = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    <span style="color: #00ffff;">return</span> cv2.Sobel(grey, cv2.CV_64F, 0, 1).var()
+</code></pre>
+</div>
+
+</section>
+<section id="slide-orgbfae15b">
+<h3 id="orgbfae15b">Fourier Transform</h3>
+<p>
+Convert image to frequency-domain, remove low-frequencies, apply
+inverse transform, return the mean of the magnitude.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-python"   ><code trim><span style="color: #00ffff;">import</span> cv2
+<span style="color: #00ffff;">import</span> numpy <span style="color: #00ffff;">as</span> np
+<span style="color: #00ffff;">def</span> <span style="color: #00fa9a; font-weight: bold;">fft</span>(f):
+    <span style="color: #7fffd4;">img</span> = cv2.imread(<span style="color: #ffc1c1;">'/tmp/ugc.jpg'</span>)
+    <span style="color: #7fffd4;">grey</span> = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    <span style="color: #7fffd4;">img_fft</span> = np.fft.fft2(grey)
+    ...
+    <span style="color: #7fffd4;">recon</span> = np.fft.ifft2(fftShift)
+    <span style="color: #7fffd4;">magnitude</span> = 20 * np.log(np.<span style="color: #b0c4de;">abs</span>(recon))
+    <span style="color: #7fffd4;">mean</span> = np.mean(magnitude)
+    <span style="color: #00ffff;">return</span> mean
+</code></pre>
+</div>
+
+</section>
+<section id="slide-org72d20c4">
+<h3 id="org72d20c4">Naive Bayes Classifier</h3>
+<p>
+Simple linear classifier based on the likelihood of events <i>assumed</i>
+to be independent.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-python"   ><code trim><span style="color: #00ffff;">from</span> sklearn <span style="color: #00ffff;">import</span> svm
+<span style="color: #00ffff;">from</span> sklearn.naive_bayes <span style="color: #00ffff;">import</span> GaussianNB
+<span style="color: #7fffd4;">clf</span> = GaussianNB()
+<span style="color: #00ffff;">def</span> <span style="color: #00fa9a; font-weight: bold;">cls</span>(x):
+    <span style="color: #7fffd4;">y</span> = clf.predict(x)
+    <span style="color: #00ffff;">return</span> clf.predict(x)
+</code></pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org67df05d">
+<h2 id="org67df05d">Chegg Image Quality &amp; Pachyderm.</h2>
+<ul>
+<li>prototyped a series of Python OpenCV scripts</li>
+<li>orchestrated on a single workstation with GNU Make</li>
+<li>deploy it at scale and with k8s expertise</li>
+<li>deploy it in an online setting (SPOILER ALERT!  That
+didn't happen!)</li>
+<li>try something different</li>
+
+</ul>
+
+</section>
+</section>
+<section>
+<section id="slide-org4cf9b8e">
+<h2 id="org4cf9b8e">Prototyping locally with Python and Make</h2>
+<div class="outline-text-2" id="text-org4cf9b8e">
+</div>
+</section>
+<section id="slide-orgd030af1">
+<h3 id="orgd030af1">Scripting</h3>
+<p>
+Python script to read a filename from the command line args, load the
+image, compute metrics, and write it to a file with another
+name from the args.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-python"   ><code trim><span style="color: #00ffff;">import</span> sys
+<span style="color: #00ffff;">with</span> <span style="color: #b0c4de;">open</span>(sys.argv[2], <span style="color: #ffc1c1;">'w'</span>) <span style="color: #00ffff;">as</span> f:
+    f.write(vol(sys.argv[3]))
+</code></pre>
+</div>
+
+</section>
+<section id="slide-org9ea7215">
+<h3 id="org9ea7215">Scripting</h3>
+<p>
+Python script to read multiple filenames from command line args,
+compute the classification, and write it out to a file with another
+name from the args.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-python"   ><code trim><span style="color: #00ffff;">import</span> sys
+<span style="color: #00ffff;">with</span> <span style="color: #b0c4de;">open</span>(sys.argv[3], <span style="color: #ffc1c1;">'w'</span>) <span style="color: #00ffff;">as</span> vol, <span style="color: #b0c4de;">open</span>(sys.argv[4], <span style="color: #ffc1c1;">'w'</span>) <span style="color: #00ffff;">as</span> sob, <span style="color: #b0c4de;">open</span>(sys.argv[5], <span style="color: #ffc1c1;">'w'</span>) <span style="color: #00ffff;">as</span> fft, <span style="color: #b0c4de;">open</span>(sys.argv[6], <span style="color: #ffc1c1;">'w'</span>) <span style="color: #00ffff;">as</span> cls:
+      cls.write(cls.predict([
+                <span style="color: #b0c4de;">float</span>(vol.read()),
+                <span style="color: #b0c4de;">float</span>(sob.read()),
+                <span style="color: #b0c4de;">float</span>(fft.read())]))
+</code></pre>
+</div>
+
+</section>
+<section id="slide-orge677295">
+<h3 id="orge677295">Orchestrating</h3>
+<p>
+GNU Make script using pattern matching and <a href="https://www.gnu.org/software/make/manual/html_node/Parallel.html">parallel</a> execution with
+<code>.jpg</code> prerequisites, OpenCV outputs as targets, and Python scripts as
+recipes
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-makefile"   ><code trim><span style="color: #7fffd4;">TARGETS</span> := $(<span style="color: #7fffd4;">patsubst</span> %.jpg,%.cls,$(<span style="color: #7fffd4;">wildcard</span> *.jpg))
+<span style="color: #00fa9a; font-weight: bold;">all</span>: $(<span style="color: #7fffd4;">TARGETS</span>)
+<span style="color: #00fa9a; font-weight: bold;">$(</span><span style="color: #00fa9a; font-weight: bold;">TARGETS</span><span style="color: #00fa9a; font-weight: bold;">)</span>: %.cls:%.vol %.cls:%.sob %.cls:%.fft
+        python cls.py $<span style="color: #8470ff; font-weight: bold;">&lt;</span> <span style="color: #00fa9a; font-weight: bold;">$</span><span style="color: #8470ff; font-weight: bold;">@</span>
+<span style="color: #00fa9a; font-weight: bold;">%.vol</span>: %.jpg
+        python vol.py $<span style="color: #8470ff; font-weight: bold;">&lt;</span> <span style="color: #00fa9a; font-weight: bold;">$</span><span style="color: #8470ff; font-weight: bold;">@</span>
+<span style="color: #00fa9a; font-weight: bold;">%.sob</span>: %.jpg
+        python sob.py $<span style="color: #8470ff; font-weight: bold;">&lt;</span> <span style="color: #00fa9a; font-weight: bold;">$</span><span style="color: #8470ff; font-weight: bold;">@</span>
+<span style="color: #00fa9a; font-weight: bold;">%.fft</span>: %.jpg
+        python fft.py $<span style="color: #8470ff; font-weight: bold;">&lt;</span> <span style="color: #00fa9a; font-weight: bold;">$</span><span style="color: #8470ff; font-weight: bold;">@</span>
+</code></pre>
+</div>
+
+<div class="org-src-container">
+
+<pre  class="src src-bash"   ><code trim>make -j
+</code></pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-orgbd254e6">
+<h2 id="orgbd254e6">Deploying at scale using Pachyderm</h2>
+<div class="outline-text-2" id="text-orgbd254e6">
+</div>
+</section>
+<section id="slide-orgc73de18">
+<h3 id="orgc73de18">Scripting</h3>
+<p>
+Use the exact same Python scripts since the Pachyderm execution model
+reads files from the the PFS and write files to the PFS filesystem.
+</p>
+
+
+<div id="org2d9aaf8" class="figure">
+<p><img src="https://m.media-amazon.com/images/I/91b3hzRGL9L._SL1500_.jpg" alt="91b3hzRGL9L._SL1500_.jpg" height="400" />
+</p>
+</div>
+
+</section>
+<section id="slide-orgeca3ecb">
+<h3 id="orgeca3ecb">Orchestrating</h3>
+<p>
+Pachyderm has "pipelines" defined in YAML files, describing inputs,
+outputs, and tasks.
+</p>
+
+</section>
+<section id="slide-orgfe901b2">
+<h3 id="orgfe901b2">Create a project</h3>
+<dl>
+<dt>project</dt><dd>top-level organizational unit to group repositories and
+pipelines</dd>
+
+</dl>
+
+<div class="org-src-container">
+
+<pre  class="src src-bash"   ><code trim>pachctl create project image-quality
+</code></pre>
+</div>
+
+</section>
+<section id="slide-orgf723be9">
+<h3 id="orgf723be9">Create repositories</h3>
+<dl>
+<dt>repository</dt><dd>locates data within the Pachyderm File System (PFS)</dd>
+<dt>PFS</dt><dd>version-controlled data management system backed by <a href="https://min.io/">MinIO</a></dd>
+
+</dl>
+
+<div class="org-src-container">
+
+<pre  class="src src-bash"   ><code trim>pachctl create repo images <span style="color: #fa8072;"># </span><span style="color: #ff7f24; font-style: italic;">input data</span>
+pachctl create repo scripts <span style="color: #fa8072;"># </span><span style="color: #ff7f24; font-style: italic;">input code</span>
+<span style="color: #fa8072;"># </span><span style="color: #ff7f24; font-style: italic;">output repository created automatically</span>
+</code></pre>
+</div>
+
+</section>
+<section id="slide-org08ed447">
+<h3 id="org08ed447">Add data to the repositories</h3>
+<p>
+Data are in backing object store (S3 or Minio), with version control
+and lineage tracking.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-bash"   ><code trim>pachctl put file -r images@branch:/images -f /images
+pachctl put file -r scripts@branch:/scripts -f /scripts
+</code></pre>
+</div>
+
+</section>
+<section id="slide-org26e803a">
+<h3 id="org26e803a">Create pipelines</h3>
+<p>
+Pipelines are a set of transformations and actions.  They operate on
+input repositories, but also automatically create output repositories
+of the same name.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-yaml"   ><code trim><span style="color: #7fffd4;">pipeline</span>:
+  <span style="color: #7fffd4;">name</span>: vol
+<span style="color: #7fffd4;">input</span>:
+  <span style="color: #7fffd4;">union</span>:
+    - <span style="color: #7fffd4;">pfs</span>:
+        <span style="color: #7fffd4;">repo</span>: images
+    - <span style="color: #7fffd4;">pfs</span>:
+        <span style="color: #7fffd4;">repo</span>: scripts
+  <span style="color: #7fffd4;">pfs</span>:
+    <span style="color: #7fffd4;">repo</span>: raw_videos_and_images
+    <span style="color: #7fffd4;">glob</span>: <span style="color: #ffc1c1;">"/*"</span>
+<span style="color: #7fffd4;">transform</span>:
+  <span style="color: #7fffd4;">image</span>: ubuntu
+  <span style="color: #7fffd4;">cmd</span>: [<span style="color: #ffc1c1;">"python"</span>, <span style="color: #ffc1c1;">"/pfs/scripts/vol.py"</span>, <span style="color: #ffc1c1;">"/pfs/images/*"</span>, <span style="color: #ffc1c1;">"/pfs/out/"</span>]
+<span style="color: #7fffd4;">autoscaling</span>: <span style="color: #8470ff; font-weight: bold;">true</span>
+</code></pre>
+</div>
+
+</section>
+<section id="slide-orgb93d393">
+<h3 id="orgb93d393">Create pipelines</h3>
+<p>
+Pipelines can be coarse-grained or fine-grained.  In this example,
+they're rather fine-grained.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-bash"   ><code trim>pachctl create pipeline -f vol.yaml
+pachctl create pipeline -f sob.yaml
+pachctl create pipeline -f fft.yaml
+</code></pre>
+</div>
+
+</section>
+<section id="slide-orgfb11118">
+<h3 id="orgfb11118">Create pipelines</h3>
+<p>
+There's an extra pipeline that's needed, using Pachyderm's <a href="https://docs.pachyderm.com/products/mldm/latest/build-dags/pipeline-spec/input-join/">join</a>
+operator, to match filenames for vol, sob, and fft using glob
+patterns.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-yaml"   ><code trim><span style="color: #7fffd4;">pipeline</span>:
+  <span style="color: #7fffd4;">name</span>: vol
+<span style="color: #7fffd4;">input</span>:
+  <span style="color: #7fffd4;">join</span>:
+    - <span style="color: #7fffd4;">pfs</span>:
+        <span style="color: #7fffd4;">repo</span>: vol
+        <span style="color: #7fffd4;">glob</span>: <span style="color: #ffc1c1;">"/*/*.vol"</span>
+        <span style="color: #7fffd4;">joinOn</span>: <span style="color: #ffc1c1;">"$1"</span>
+    - <span style="color: #7fffd4;">pfs</span>:
+        <span style="color: #7fffd4;">repo</span>: sob
+        <span style="color: #7fffd4;">glob</span>: <span style="color: #ffc1c1;">"/*/*.sob"</span>
+        <span style="color: #7fffd4;">joinOn</span>: <span style="color: #ffc1c1;">"$1"</span>
+    - <span style="color: #7fffd4;">pfs</span>:
+        <span style="color: #7fffd4;">repo</span>: fft
+        <span style="color: #7fffd4;">glob</span>: <span style="color: #ffc1c1;">"/*/*.fft"</span>
+        <span style="color: #7fffd4;">joinOn</span>: <span style="color: #ffc1c1;">"$1"</span>
+<span style="color: #7fffd4;">transform</span>:
+  <span style="color: #7fffd4;">image</span>: ubuntu
+  <span style="color: #7fffd4;">cmd</span>: [<span style="color: #ffc1c1;">"python"</span>, <span style="color: #ffc1c1;">"/pfs/scripts/join.py"</span>, <span style="color: #ffc1c1;">"/pfs/images/*"</span>]
+<span style="color: #7fffd4;">autoscaling</span>: <span style="color: #8470ff; font-weight: bold;">true</span>
+</code></pre>
+</div>
+
+</section>
+<section id="slide-orgbb11595">
+<h3 id="orgbb11595">Create pipelines</h3>
+<p>
+It's in this joined pipeline that the <code>join.py</code> Python script (elided)
+calls the <code>cls.py</code> script to do the actual Naive Bayes classification
+of image quality.
+</p>
+
+<div class="org-src-container">
+
+<pre  class="src src-bash"   ><code trim>pachctl create pipeline -f cls.yaml
+</code></pre>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org89a4959">
+<h2 id="org89a4959">What is the point of all this?</h2>
+<p>
+As images and scripts change in the <code>images</code> and <code>scripts</code>
+repositories, Pachyderm automatically versions those repositories,
+automatically and incrementally creates tasks to process those
+changes, schedules those tasks across worker pods, and versions the
+output, with full lineage tracking.
+</p>
+
+</section>
+</section>
+<section>
+<section id="slide-orge081386">
+<h2 id="orge081386">A picture is worth a thousand words.</h2>
+<p>
+<b>NOTE</b>:  this is not my pipeline!
+</p>
+
+
+<div id="org881e56d" class="figure">
+<p><img src="https://docs.pachyderm.com/images/mldm/beginner-tutorial/dag-sixth-pipeline.webp" alt="dag-sixth-pipeline.webp" />
+</p>
+</div>
+
+</section>
+</section>
+<section>
+<section id="slide-org716a521">
+<h2 id="org716a521">Key Concepts</h2>
+<dl>
+<dt>repositories</dt><dd>store data (pros / cons)</dd>
+<dt>pipelines</dt><dd>process data &amp; create more repositories</dd>
+<dt>execution model</dt><dd>you write code to read from and write to special
+<code>/pfs</code> filesystems</dd>
+
+</dl>
+
+</section>
+</section>
+<section>
+<section id="slide-org324f69f">
+<h2 id="org324f69f">Key Concepts</h2>
+<dl>
+<dt>scripts</dt><dd>Bash, Python, R, Java, whatever, these typically are
+versioned in their own repository</dd>
+<dt>images</dt><dd>scripts run in containers which aren't exactly versioned</dd>
+
+</dl>
+
+</section>
+</section>
+<section>
+<section id="slide-org850c71d">
+<h2 id="org850c71d">Pros of Pachyderm</h2>
+<ul>
+<li>The Pachyderm model maps well from data pipelines built locally with
+scripts.</li>
+<li>Versioning, automatic and incremental processing, and data and code
+lineage are powerful.</li>
+<li>The execution model is also highly flexible, supporting
+heterogeneous pipelines.</li>
+<li>Model serving looks interesting, but we did not pursue this.</li>
+
+</ul>
+
+</section>
+</section>
+<section>
+<section id="slide-org0054e3b">
+<h2 id="org0054e3b">Cons of Pachyderm</h2>
+<ul>
+<li>k8s dependency creates operational burden and a heavy lift to get
+started.</li>
+<li>The Pachyderm model is complex, with many moving parts.</li>
+<li>Pachyderm versioning, while adopting Git semantics, is not Git.</li>
+
+</ul>
+
+</section>
+</section>
+<section>
+<section id="slide-orgc1fa48d">
+<h2 id="orgc1fa48d">Alternatives to Pachyderm</h2>
+<div class="outline-text-2" id="text-orgc1fa48d">
+</div>
+</section>
+<section id="slide-orgc6150bc">
+<h3 id="orgc6150bc">dask</h3>
+<p>
+<a href="https://www.dask.org/">dask</a> might be simpler than Pachyderm, but its execution model is different,
+parallelizing data structures in Python, and may be more limited.
+Also, it lacks versioning and automatic incremental computation.
+</p>
+
+</section>
+<section id="slide-org6d28274">
+<h3 id="org6d28274">Airflow</h3>
+<p>
+<a href="https://airflow.apache.org/">Airflow</a> is well-established but is showing its age.  Probably more
+rigid than some of the newer workflow / data processing systems.  
+</p>
+
+</section>
+<section id="slide-orga00377c">
+<h3 id="orga00377c">dbt</h3>
+<p>
+<a href="https://www.getdbt.com/">dbt</a> transposes the T and the L, from ETL ➔ ELT and seems to be winning
+in the modern data warehouse space.
+</p>
+
+</section>
+</section>
+<section>
+<section id="slide-org456c7b4">
+<h2 id="org456c7b4">Recommendations</h2>
+<p>
+<a href="https://www.thoughtworks.com/en-us/radar">Assess</a> Pachyderm <i>if</i> you have:
+</p>
+
+<ul>
+<li>k8s expertise</li>
+<li>complex transformation needs</li>
+<li>heterogeneous tooling</li>
+<li>more ETL than ELT</li>
+<li>an appetite for complexity</li>
+
+</ul>
+</section>
+</section>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js/dist/reveal.js"></script>
+
+<script>
+// Full list of configuration options available here:
+// https://github.com/hakimel/reveal.js#configuration
+Reveal.initialize({
+
+// Optional libraries used to extend on reveal.js
+dependencies: [
+ { src: 'https://cdn.jsdelivr.net/npm/reveal.js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+ { src: 'https://cdn.jsdelivr.net/npm/reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+ { src: 'https://cdn.jsdelivr.net/npm/reveal.js/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+ { src: 'https://cdn.jsdelivr.net/npm/reveal.js/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }]
+
+});
+
+</script>
+</body>
+</html>
