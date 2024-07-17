@@ -406,7 +406,7 @@ in the modern data warehouse space.
 - [[https://szeitlin.github.io/posts/engineering/pachyderm-vs-airflow/][Pachyderm vs Airflow]] (2018)
 - [[https://szeitlin.github.io/posts/engineering/dvc_vs_pachyderm/][DVC vs Airflow]] (2021)
 
-  #+ATTR_HTML: :width 300
+  #+ATTR_HTML: :width 200
   [[https://raw.githubusercontent.com/dventimiglia/pachyderm_presentation/main/qrcode_github.com.png]]
 
   https://github.com/dventimiglia/pachyderm_presentation
