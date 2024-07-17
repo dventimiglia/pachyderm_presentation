@@ -482,5 +482,6 @@ pachctl list files content_collager@master
 #+end_src
 
 #+begin_src bash :results output :exports both
-pachctl mount images --repos images@staging  
+mkdir -p mnt
+pachctl mount mnt --project video-to-frame-traces --repos content_collager@master
 #+end_src
