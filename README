@@ -405,7 +405,6 @@ in the modern data warehouse space.
 
 - [[https://szeitlin.github.io/posts/engineering/pachyderm-vs-airflow/][Pachyderm vs Airflow]] (2018)
 - [[https://szeitlin.github.io/posts/engineering/dvc_vs_pachyderm/][DVC vs Airflow]] (2021)
-- 
 
 #  LocalWords:  cv img imread grey cvtColor BGR numpy np fft fftShift
 #  LocalWords:  sklearn svm bayes GaussianNB clf cls OpenCV sys argv
